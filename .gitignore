@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+database/monitor.db
+.streamlit/
+reports/dns_report.json

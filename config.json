@@ -1,0 +1,15 @@
+
+
+{
+  "domains": [
+    "example.com"
+  ],
+  "hosts": [
+    {
+      "hostname": "127.0.0.1",
+      "expected_ports": [8000],
+      "allowed_ports": [8000]
+    }
+  ],
+  "scan_interval_minutes": 60
+}

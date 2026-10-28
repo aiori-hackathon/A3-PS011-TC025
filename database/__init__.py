@@ -1,0 +1,1 @@
+"""SQLite persistence for scans, baselines, and detected changes."""
