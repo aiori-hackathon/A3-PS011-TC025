@@ -69,6 +69,44 @@ Run the unit tests without relying on live DNS:
 python -m unittest discover -s tests
 ```
 
+## Day 4: Port Monitoring
+Port monitoring uses only the `hosts` entries in `config.json`. Each host must explicitly provide `expected_ports` and `allowed_ports` as lists of individual integer port numbers from 1 to 65535. Expected ports must also be in the allowed list. Do not configure ranges. For example:
+
+```json
+{
+   "hosts": [
+      {
+         "hostname": "127.0.0.1",
+         "expected_ports": [8000],
+         "allowed_ports": [8000, 8080]
+      }
+   ]
+}
+```
+
+Run the checker from the project root:
+
+```powershell
+python scanner/port_checker.py
+```
+
+The report is printed and saved to `reports/port_report.json`. It records the host, TCP port, UTC scan time, expected and observed state, comparison result, any errors, safe service-identification evidence, and review findings.
+
+The checker performs four distinct checks:
+
+1. **TCP connectivity:** a successful connection is `OPEN`; this proves only that a TCP connection was accepted at that time, not which application is running or whether it is vulnerable.
+2. **Expected-state comparison:** configured `expected_ports` are expected to be `OPEN`; other explicitly allowed ports are expected to be `CLOSED`. A refused TCP connection is reported as `CONNECTION_FAILED`. `TIMEOUT` is inconclusive, not closed.
+3. **Unexpected-open detection:** an open allowed port absent from `expected_ports` is recorded as a review finding with evidence and a suggested next action. It is not automatically classified as a vulnerability.
+4. **Safe service identification:** on conventional web ports in the approved list, the checker sends a minimal HTTP `HEAD /` request. It does not send exploit payloads. Other ports are not protocol-probed; the TCP result alone does not identify their service.
+
+Statuses are `OPEN`, `CONNECTION_FAILED`, `TIMEOUT`, and `ERROR`. `ERROR` indicates another issue, such as invalid scope or a local/network socket error. A scan does not infer a closed state from a timeout, and transient firewall or network behavior can produce false positives or inconclusive results. Only the configured host and port allowlists are scanned; direct helper calls are also checked against that configuration. These checks do not replace service-owner review or a full security assessment.
+
+Run only the mocked and loopback-only port tests with:
+
+```powershell
+python -m unittest discover -s tests -p test_port_checker.py -v
+```
+
 ## Safety
 Only run checks against assets explicitly authorised
 for this project.
