@@ -2,5 +2,6 @@ __pycache__/
 *.py[cod]
 .venv/
 database/monitor.db
+database/attack_surface.db
 .streamlit/
 reports/dns_report.json

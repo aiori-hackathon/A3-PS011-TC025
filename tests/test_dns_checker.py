@@ -21,7 +21,8 @@ class CheckRecordTests(unittest.TestCase):
 
         result = check_record("example.com", "A")
 
-        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["status"], "RECORD_FOUND")
+        self.assertEqual(result["values"], ["192.0.2.10"])
         self.assertEqual(result["answers"], ["192.0.2.10"])
         self.assertIsNone(result["error"])
         resolver_class.return_value.resolve.assert_called_once_with(
@@ -30,11 +31,11 @@ class CheckRecordTests(unittest.TestCase):
 
     def test_dns_errors_are_reported_by_category(self):
         cases = (
-            (dns.resolver.NoAnswer(), "no_answer"),
-            (dns.resolver.NXDOMAIN(), "nxdomain"),
-            (dns.exception.Timeout("timed out"), "timeout"),
-            (dns.resolver.NoNameservers("no nameservers"), "nameserver_error"),
-            (dns.exception.DNSException("DNS failure"), "dns_error"),
+            (dns.resolver.NoAnswer(), "NO_RECORD"),
+            (dns.resolver.NXDOMAIN(), "DOMAIN_NOT_FOUND"),
+            (dns.exception.Timeout("timed out"), "TIMEOUT"),
+            (dns.resolver.NoNameservers("no nameservers"), "DNS_ERROR"),
+            (dns.exception.DNSException("DNS failure"), "DNS_ERROR"),
         )
         for error, expected_status in cases:
             with self.subTest(status=expected_status), patch(
@@ -45,6 +46,7 @@ class CheckRecordTests(unittest.TestCase):
                 result = check_record("example.com", "AAAA")
 
                 self.assertEqual(result["status"], expected_status)
+                self.assertEqual(result["values"], [])
                 self.assertEqual(result["answers"], [])
                 self.assertEqual(result["error"]["type"], type(error).__name__)
 
@@ -81,7 +83,8 @@ class DnsDiscoveryTests(unittest.TestCase):
     @patch("scanner.dns_checker.check_record")
     def test_checks_each_record_type_and_uses_utc_timestamp(self, check_record_mock):
         check_record_mock.side_effect = lambda domain, record_type: {
-            "status": "no_answer",
+            "status": "NO_RECORD",
+            "values": [],
             "answers": [],
             "error": {"type": "NoAnswer", "message": "no answer"},
         }
@@ -91,9 +94,15 @@ class DnsDiscoveryTests(unittest.TestCase):
         self.assertEqual(set(result["record_types"]), {"A", "AAAA", "CNAME"})
         self.assertTrue(result["scanned_at"].endswith("+00:00"))
         self.assertEqual(check_record_mock.call_count, 3)
+        for record_type, record_result in result["record_types"].items():
+            self.assertEqual(record_result["domain"], "example.com")
+            self.assertEqual(record_result["record_type"], record_type)
+            self.assertEqual(record_result["scanned_at"], result["scanned_at"])
+            self.assertEqual(record_result["status"], "NO_RECORD")
+            self.assertEqual(record_result["values"], [])
 
     @patch("scanner.dns_checker.check_dns")
-    def test_writes_report_prints_json_and_continues_domains(self, check_dns_mock):
+    def test_writes_report_prints_summary_and_continues_domains(self, check_dns_mock):
         config_path = self.write_config(
             '{"domains": ["first.example", "second.example"]}'
         )
@@ -109,22 +118,27 @@ class DnsDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(len(results), 2)
         self.assertEqual(json.loads(report_path.read_text(encoding="utf-8")), results)
-        self.assertEqual(json.loads(output.getvalue()), results)
+        self.assertIn("DNS discovery summary", output.getvalue())
+        self.assertIn("first.example", output.getvalue())
+        self.assertIn("second.example", output.getvalue())
         self.assertEqual(check_dns_mock.call_count, 2)
 
     @patch("scanner.dns_checker.check_record")
     def test_one_record_failure_does_not_skip_later_types(self, check_record_mock):
         check_record_mock.side_effect = [RuntimeError("unexpected"), {
-            "status": "success", "answers": ["2001:db8::1"], "error": None
+            "status": "RECORD_FOUND",
+            "values": ["2001:db8::1"],
+            "answers": ["2001:db8::1"],
+            "error": None,
         }, {
-            "status": "no_answer", "answers": [], "error": None
+            "status": "NO_RECORD", "values": [], "answers": [], "error": None
         }]
 
         result = check_dns("example.com")
 
-        self.assertEqual(result["record_types"]["A"]["status"], "unexpected_error")
-        self.assertEqual(result["record_types"]["AAAA"]["status"], "success")
-        self.assertEqual(result["record_types"]["CNAME"]["status"], "no_answer")
+        self.assertEqual(result["record_types"]["A"]["status"], "DNS_ERROR")
+        self.assertEqual(result["record_types"]["AAAA"]["status"], "RECORD_FOUND")
+        self.assertEqual(result["record_types"]["CNAME"]["status"], "NO_RECORD")
 
 
 if __name__ == "__main__":
