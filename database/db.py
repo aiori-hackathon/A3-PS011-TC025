@@ -3,14 +3,25 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator
 
-DB_PATH = Path(__file__).with_name("attack_surface.db")
-LEGACY_DB_PATH = Path(__file__).with_name("monitor.db")
+DB_PATH = Path(
+    os.environ.get(
+        "ATTACK_SURFACE_DB_PATH",
+        Path(__file__).with_name("attack_surface.db"),
+    )
+).expanduser()
+LEGACY_DB_PATH = Path(
+    os.environ.get(
+        "ATTACK_SURFACE_LEGACY_DB_PATH",
+        Path(__file__).with_name("monitor.db"),
+    )
+).expanduser()
 _ASSET_TYPES = {"domain", "host"}
 _SCAN_STATUSES = {
     "running",

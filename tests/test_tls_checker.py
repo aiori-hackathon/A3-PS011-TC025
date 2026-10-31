@@ -148,6 +148,41 @@ class TlsCheckerTests(unittest.TestCase):
         self.assertEqual(result["status"], "out_of_scope")
         connect.assert_not_called()
 
+    def test_configured_host_may_be_checked_only_on_an_allowed_tls_port(self):
+        self.write_config(
+            {
+                "domains": [],
+                "hosts": [
+                    {
+                        "hostname": "127.0.0.1",
+                        "expected_ports": [8443],
+                        "allowed_ports": [8443],
+                    }
+                ],
+            }
+        )
+        raw_socket, _, context = self.mock_handshake("Jan 01 00:00:00 2099 GMT")
+
+        with patch(
+            "scanner.tls_checker.ssl.create_default_context", return_value=context
+        ), patch(
+            "scanner.tls_checker.socket.create_connection", return_value=raw_socket
+        ) as connect:
+            result = check_tls(
+                "127.0.0.1",
+                port=8443,
+                config_path=self.config_path,
+            )
+            unauthorized = check_tls(
+                "127.0.0.1",
+                port=443,
+                config_path=self.config_path,
+            )
+
+        self.assertTrue(result["available"])
+        self.assertEqual(unauthorized["status"], "out_of_scope")
+        connect.assert_called_once_with(("127.0.0.1", 8443), timeout=5.0)
+
     def test_run_writes_report_for_authorized_domains(self):
         self.write_config({"domains": ["example.com", "status.example.org"]})
         report_path = self.root / "reports" / "tls_report.json"

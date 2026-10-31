@@ -85,6 +85,32 @@ class FindingTests(unittest.TestCase):
         self.assertEqual(findings[0]["category"], "TLS_CERTIFICATE_EXPIRED")
         self.assertEqual(findings[0]["severity"], "HIGH")
 
+    def test_detects_expired_tls_certificate_rejected_during_handshake(self):
+        scan = self.create_scan(
+            [
+                (
+                    self.host_id,
+                    "TLS",
+                    "TLS_RESULT",
+                    json.dumps(
+                        {
+                            "available": False,
+                            "status": "expired_certificate",
+                            "is_expired": True,
+                            "error": "certificate has expired",
+                        }
+                    ),
+                    {"available": False},
+                )
+            ]
+        )
+
+        findings = detect_scan_changes(scan, self.db_path)
+
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["category"], "TLS_CERTIFICATE_EXPIRED")
+        self.assertEqual(findings[0]["severity"], "HIGH")
+
     def test_detects_certificate_fingerprint_change(self):
         first = self.create_scan(
             [

@@ -276,6 +276,23 @@ def detect_scan_changes(
             continue
         current_value = _json_value(current.get("observation_value"), {})
         if observation_type == "TLS_RESULT" or not current_value.get("available"):
+            if current_value.get("is_expired") or current_value.get(
+                "status"
+            ) == "expired_certificate":
+                findings.append(
+                    _finding(
+                        asset_id=asset_id,
+                        asset_value=asset_names[asset_id],
+                        category="TLS_CERTIFICATE_EXPIRED",
+                        before=None,
+                        after=current_value.get("expires_at"),
+                        severity="HIGH",
+                        evidence=json.dumps(current_value, sort_keys=True),
+                        description="The observed TLS certificate is expired.",
+                        recommendation="Renew and deploy a valid certificate for this hostname.",
+                    )
+                )
+                continue
             error_type = current_value.get("error_type", "TLSUnavailable")
             if error_type not in {"TimeoutError", "Timeout", "socket.timeout"}:
                 message = str(current_value.get("error", "")).lower()
