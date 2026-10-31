@@ -94,6 +94,23 @@ Initialize the normalized database:
 python -c "from database.db import initialize_database; initialize_database()"
 ```
 
+## Deploy on Render
+
+The included [render.yaml](render.yaml) defines a Python web service that runs
+the Streamlit dashboard on Render's `$PORT` and mounts a persistent disk at
+`/var/data` for both SQLite databases. The persistent disk requires a paid
+Render instance plan. For an existing Render service, use:
+
+- **Build command:** `pip install -r requirements.txt`
+- **Start command:** `streamlit run dashboard.py --server.address 0.0.0.0 --server.port $PORT --server.headless true`
+- **Environment:** `ATTACK_SURFACE_DB_PATH=/var/data/attack_surface.db` and
+  `ATTACK_SURFACE_LEGACY_DB_PATH=/var/data/monitor.db`
+
+The dashboard is a Streamlit application, not a Flask WSGI application, so
+Gunicorn is not its start command. `app.py` is the command-line scanner entry
+point; `dashboard.py` is the Render web entry point. Back up the mounted disk
+before redeploying or changing its mount path.
+
 ## Configuration and authorized scope
 
 Edit `config.json` before running scans. `domains` contains DNS names to query.
@@ -203,13 +220,19 @@ every detected change as a vulnerability.
 ## Tests and seeded scenarios
 
 Run all tests without live network access:
-python scanner/dns_checker.py
+
+```powershell
+python -m unittest discover -s tests -v
 ```
 
-The formatted report is printed in the terminal and saved to `reports/dns_report.json`. The `reports` directory is created as needed. Configuration errors, including malformed JSON and invalid domain names, are reported before queries begin. DNS lookups use a three-second timeout; a failure for one record type does not prevent the remaining record types or configured domains from being checked.
-
 ## Day 3: TLS Certificate Monitoring
-The TLS checker reads approved hostnames from the `domains` array in `config.json` and validates them with the same domain allowlist used by DNS discovery. A host passed directly to `check_tls` is also checked against this allowlist before any connection is made. Connections use port 443 by default, Python's default certificate trust and hostname verification, and SNI. Verification is never disabled.
+The TLS checker validates DNS names from the `domains` array and hosts from the
+`hosts`/`targets` scope in `config.json`. A configured domain is checked on port
+443; a configured host is checked only on a port explicitly listed in its
+`allowed_ports`. A host passed directly to `check_tls` is checked against that
+same scope before any connection is made. Connections use Python's default
+certificate trust and hostname verification, and SNI. Verification is never
+disabled.
 
 Run it from the project root:
 

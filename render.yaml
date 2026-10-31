@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: attack-surface-monitor
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run dashboard.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    disk:
+      name: attack-surface-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ATTACK_SURFACE_DB_PATH
+        value: /var/data/attack_surface.db
+      - key: ATTACK_SURFACE_LEGACY_DB_PATH
+        value: /var/data/monitor.db

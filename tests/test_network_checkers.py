@@ -126,6 +126,18 @@ class PortCheckerTests(unittest.TestCase):
 
 
 class TLSCheckerTests(unittest.TestCase):
+    def setUp(self):
+        self.allowlisted_scope = patch(
+            "scanner.tls_checker.load_config",
+            return_value={
+                "domains": ["approved.example"],
+                "hosts": {},
+                "tls_warning_days": 30,
+            },
+        )
+        self.allowlisted_scope.start()
+        self.addCleanup(self.allowlisted_scope.stop)
+
     @patch("scanner.tls_checker.ssl.create_default_context")
     @patch("scanner.tls_checker.socket.create_connection")
     def test_verified_certificate_identity_and_expiry_are_returned(
