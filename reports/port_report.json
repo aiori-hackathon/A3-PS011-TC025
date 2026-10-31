@@ -1,0 +1,26 @@
+[
+  {
+    "hostname": "127.0.0.1",
+    "scanned_at": "2026-10-29T14:56:02+00:00",
+    "status": "completed",
+    "ports": [
+      {
+        "hostname": "127.0.0.1",
+        "port": 8000,
+        "protocol": "TCP",
+        "scanned_at": "2026-10-29T14:56:02+00:00",
+        "status": "OPEN",
+        "error": null,
+        "expected_state": "OPEN",
+        "observed_state": "OPEN",
+        "expected_match": true,
+        "service_identification": {
+          "status": "identified",
+          "protocol": "HTTP",
+          "evidence": "HTTP/1.0 200 OK"
+        }
+      }
+    ],
+    "findings": []
+  }
+]
