@@ -1,0 +1,17 @@
+[
+  {
+    "hostname": "example.com",
+    "port": 443,
+    "scanned_at": "2026-10-29T14:55:28+00:00",
+    "expires_at": null,
+    "days_remaining": null,
+    "is_expired": false,
+    "is_soon_to_expire": false,
+    "connection_error": null,
+    "verification_error": {
+      "type": "SSLCertVerificationError",
+      "message": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1020)"
+    },
+    "status": "untrusted_certificate"
+  }
+]

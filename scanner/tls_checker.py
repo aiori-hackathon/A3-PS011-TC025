@@ -1,13 +1,31 @@
-"""Inspect the certificate presented by a hostname on its HTTPS port."""
+"""Check TLS certificates for explicitly authorized domains."""
 
 import hashlib
 import socket
 import ssl
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_WARNING_DAYS = 30
+DEFAULT_TIMEOUT = 5.0
+
+# Add the project root when this file is run directly instead of as a module.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scanner.scope import validate_domains
 
 
-def check_tls(hostname: str, port: int = 443, timeout: float = 3.0) -> dict:
-    context = ssl.create_default_context()
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
+    """Read configuration and validate the approved domain allowlist."""
+    path = Path(config_path) if config_path is not None else PROJECT_ROOT / "config.json"
     try:
         with socket.create_connection((hostname, port), timeout=timeout) as raw_socket:
             with context.wrap_socket(raw_socket, server_hostname=hostname) as connection:

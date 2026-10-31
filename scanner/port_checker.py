@@ -1,4 +1,4 @@
-"""Check connectivity only on ports explicitly listed for a target."""
+"""Check TCP reachability for explicitly approved hosts and ports."""
 
 import math
 import socket
