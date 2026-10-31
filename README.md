@@ -4,8 +4,8 @@ PS-011 is a defensive monitoring tool for inventorying explicitly authorized
 domains and hosts, observing DNS/TLS/selected TCP-port state, and reviewing
 changes between scans.
 
-Project video: [Hackathon demonstration](https://youtu.be/CFCZ6hMw4Uk?si=5bE_guE9KVD_HHvu)
-
+Team intro: [Hackathon demonstration](https://youtu.be/CFCZ6hMw4Uk?si=5bE_guE9KVD_HHvu)
+project demo: https://youtu.be/LaF3hZtqnV0
 ## Problem and proposed solution
 
 Internet-facing DNS records, certificates, and services change over time.
