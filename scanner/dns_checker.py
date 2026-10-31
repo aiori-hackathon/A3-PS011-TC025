@@ -45,57 +45,83 @@ def _error_details(error: Exception) -> dict[str, str]:
 
 
 def check_record(domain: str, record_type: str) -> dict[str, Any]:
-    """Query one record type and return its status, answers, and any error."""
+    """Query one record type and return its status, values, and any error."""
     try:
         resolver = dns.resolver.Resolver()
         answer = resolver.resolve(domain, record_type, lifetime=DNS_QUERY_TIMEOUT)
-        answers = sorted({item.to_text() for item in answer})
+        values = sorted({item.to_text() for item in answer})
         return {
-            "status": "success",
-            "answers": answers,
+            "status": "RECORD_FOUND",
+            "values": values,
+            # Keep the older key available to callers that used the original report.
+            "answers": values,
             "error": None,
         }
     except dns.resolver.NXDOMAIN as error:
-        status = "nxdomain"
+        status = "DOMAIN_NOT_FOUND"
         error_details = _error_details(error)
     except dns.resolver.NoAnswer as error:
-        status = "no_answer"
+        status = "NO_RECORD"
         error_details = _error_details(error)
     except dns.exception.Timeout as error:
-        status = "timeout"
+        status = "TIMEOUT"
         error_details = _error_details(error)
     except dns.resolver.NoNameservers as error:
-        status = "nameserver_error"
+        status = "DNS_ERROR"
         error_details = _error_details(error)
     except dns.exception.DNSException as error:
-        status = "dns_error"
+        status = "DNS_ERROR"
         error_details = _error_details(error)
     except OSError as error:
-        status = "network_error"
+        status = "DNS_ERROR"
         error_details = _error_details(error)
 
-    return {"status": status, "answers": [], "error": error_details}
+    return {"status": status, "values": [], "answers": [], "error": error_details}
 
 
 def check_dns(domain: str) -> dict[str, Any]:
     """Check A, AAAA, and CNAME records independently for one domain."""
-    record_results = {}
+    scanned_at = _utc_timestamp()
+    record_results: dict[str, dict[str, Any]] = {}
     for record_type in RECORD_TYPES:
         try:
-            record_results[record_type] = check_record(domain, record_type)
+            result = check_record(domain, record_type)
         except Exception as error:
             # Keep an unexpected per-query failure from preventing the remaining lookups.
-            record_results[record_type] = {
-                "status": "unexpected_error",
+            result = {
+                "status": "DNS_ERROR",
+                "values": [],
                 "answers": [],
                 "error": _error_details(error),
             }
+        result.update(
+            {
+                "domain": domain,
+                "scanned_at": scanned_at,
+                "record_type": record_type,
+                # Accept older/custom check_record implementations that return answers.
+                "values": result.get("values", result.get("answers", [])),
+            }
+        )
+        record_results[record_type] = result
 
     return {
         "domain": domain,
-        "scanned_at": _utc_timestamp(),
+        "scanned_at": scanned_at,
         "record_types": record_results,
     }
+
+
+def print_report_summary(results: list[dict[str, Any]]) -> None:
+    """Print a concise summary of the DNS records found for each domain."""
+    print("DNS discovery summary")
+    print("=====================")
+    for domain_result in results:
+        print(f"\nDomain: {domain_result['domain']}")
+        for record_type, record_result in domain_result["record_types"].items():
+            values = record_result.get("values", [])
+            value_text = ", ".join(values) if values else "none"
+            print(f"  {record_type}: {record_result['status']} ({value_text})")
 
 
 def run_dns_discovery(
@@ -119,11 +145,15 @@ def run_dns_discovery(
                 }
             )
 
-    destination = Path(report_path) if report_path is not None else PROJECT_ROOT / "reports" / "dns_report.json"
+    destination = (
+        Path(report_path)
+        if report_path is not None
+        else PROJECT_ROOT / "reports" / "dns_report.json"
+    )
     destination.parent.mkdir(parents=True, exist_ok=True)
     formatted_report = json.dumps(results, indent=2)
     destination.write_text(formatted_report + "\n", encoding="utf-8")
-    print(formatted_report)
+    print_report_summary(results)
     return results
 
 

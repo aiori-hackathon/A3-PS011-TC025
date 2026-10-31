@@ -26,6 +26,38 @@ class ScopeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.load_config({"targets": [{"hostname": "example.com", "ports": ["1-100"]}]})
 
+    def test_expected_ports_must_be_in_explicit_allowed_port_set(self):
+        with self.assertRaisesRegex(ValueError, "must also be explicitly allowed"):
+            self.load_config(
+                {
+                    "hosts": [
+                        {
+                            "hostname": "example.com",
+                            "expected_ports": [443],
+                            "allowed_ports": [8443],
+                        }
+                    ]
+                }
+            )
+
+    def test_connection_timeout_is_loaded_and_validated(self):
+        target = self.load_config(
+            {
+                "connection_timeout_seconds": 1.25,
+                "hosts": [{"hostname": "127.0.0.1", "allowed_ports": [8000]}],
+            }
+        )[0]
+
+        self.assertEqual(target.connection_timeout_seconds, 1.25)
+
+        with self.assertRaisesRegex(ValueError, "connection_timeout_seconds"):
+            self.load_config(
+                {
+                    "connection_timeout_seconds": 0,
+                    "hosts": [{"hostname": "127.0.0.1", "allowed_ports": [8000]}],
+                }
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,9 +1,7 @@
 
 
 {
-  "domains": [
-    "example.com"
-  ],
+  "domains": [],
   "hosts": [
     {
       "hostname": "127.0.0.1",
@@ -11,5 +9,7 @@
       "allowed_ports": [8000]
     }
   ],
-  "scan_interval_minutes": 60
+  "connection_timeout_seconds": 3.0,
+  "scan_interval_minutes": 60,
+  "scheduled_scans_enabled": true
 }
